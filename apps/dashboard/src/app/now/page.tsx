@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import { DashboardShell } from "@/components/dashboard-shell";
-import { priorities } from "@/lib/dashboard-data";
+import { getPriorities } from "@/lib/dashboard-data";
 
-export default function NowPage() {
+export default async function NowPage() {
+  const priorities = await getPriorities();
+
   return (
     <DashboardShell>
       <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -15,7 +17,7 @@ export default function NowPage() {
 
         <ol className="mt-8 grid gap-4">
           {priorities.map((priority, index) => (
-            <li key={priority.title} className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+            <li key={`${priority.title}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Priority {index + 1}</p>
@@ -30,7 +32,7 @@ export default function NowPage() {
                   </Link>
                 ) : null}
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-300">{priority.detail}</p>
+              {priority.detail ? <p className="mt-3 text-sm leading-6 text-slate-300">{priority.detail}</p> : null}
             </li>
           ))}
         </ol>

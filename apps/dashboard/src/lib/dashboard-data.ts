@@ -22,7 +22,10 @@ interface ProjectFrontmatter {
   last_updated?: string;
 }
 
-const PROJECTS_DIR = path.resolve(process.cwd(), "..", "..", "projects");
+const REPO_ROOT = path.resolve(process.cwd(), "..", "..");
+const PROJECTS_DIR = path.join(REPO_ROOT, "projects");
+const TASKS_NOW_PATH = path.join(REPO_ROOT, "tasks", "now.md");
+const DECISIONS_DIR = path.join(REPO_ROOT, "decisions");
 
 function normalizeStringArray(value: unknown): string[] {
   return Array.isArray(value)
@@ -44,10 +47,7 @@ function normalizeString(value: unknown): string {
 
 function extractSection(content: string, heading: string): string {
   const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(
-    `^## ${escapedHeading}\\n([\\s\\S]*?)(?=^## |\\Z)`,
-    "m",
-  );
+  const pattern = new RegExp(`^## ${escapedHeading}\\n([\\s\\S]*?)(?=^## |\\Z)`, "m");
   const match = content.match(pattern);
 
   if (!match) {
@@ -63,6 +63,37 @@ function cleanMarkdownSection(value: string): string {
     .map((line) => line.replace(/^[-*]\s*/, "").trim())
     .filter(Boolean)
     .join(" ");
+}
+
+function extractListItems(section: string): string[] {
+  return section
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^[-*]\s+/.test(line))
+    .map((line) => line.replace(/^[-*]\s+/, "").trim())
+    .filter(Boolean);
+}
+
+function inferRelatedProject(text: string, projects: ProjectRecord[]): string | undefined {
+  const normalized = text.toLowerCase();
+
+  const match = projects.find((project) => {
+    const candidates = [project.slug, project.name.toLowerCase()];
+    return candidates.some((candidate) => normalized.includes(candidate.toLowerCase()));
+  });
+
+  return match?.slug;
+}
+
+function inferRelatedProjects(text: string, projects: ProjectRecord[]): string[] {
+  const normalized = text.toLowerCase();
+
+  return projects
+    .filter((project) => {
+      const candidates = [project.slug, project.name.toLowerCase()];
+      return candidates.some((candidate) => normalized.includes(candidate.toLowerCase()));
+    })
+    .map((project) => project.slug);
 }
 
 function mapProjectFileToRecord(fileContents: string): ProjectRecord {
@@ -127,44 +158,44 @@ export async function getProjectSlugs(): Promise<string[]> {
   return projects.map((project) => project.slug);
 }
 
-export const priorities: PriorityItem[] = [
-  {
-    title: "Stabilize MEPA as the portfolio operating system",
-    detail: "Keep the docs, schema, and dashboard scaffold aligned so the repo becomes a dependable command layer.",
-    relatedProject: "mepa",
-  },
-  {
-    title: "Define JobBuilda beta exit criteria",
-    detail: "Clarify feedback inputs, launch blockers, and release readiness so beta does not drift.",
-    relatedProject: "jobbuilda",
-  },
-  {
-    title: "Reset ArunaDoc architecture before more backend work",
-    detail: "Treat ArunaDoc as a restructure effort instead of an incremental feature build.",
-    relatedProject: "arunadoc",
-  },
-  {
-    title: "Decide MEMA's hosting direction",
-    detail: "Choose between local-only use, hosted internal deployment, or a broader product path.",
-    relatedProject: "mema",
-  },
-];
+export async function getPriorities(): Promise<PriorityItem[]> {
+  const projects = await getProjects();
+  const fileContents = await fs.readFile(TASKS_NOW_PATH, "utf8");
+  const currentPrioritiesSection = extractSection(fileContents, "Current priorities");
+  const items = extractListItems(currentPrioritiesSection);
 
-export const decisions: DecisionSummary[] = [
-  {
-    title: "Establish MEPA as a documentation-first operating repo",
-    date: "2026-05-20",
-    status: "Accepted",
-    summary:
-      "MEPA begins as a structured documentation system before evolving into an internal dashboard application.",
-    relatedProjects: ["mepa"],
-  },
-  {
-    title: "Treat ArunaDoc as a restructure project",
-    date: "2026-05-20",
-    status: "Accepted",
-    summary:
-      "ArunaDoc backend work should pause until responsibilities, domain model, and project structure are redesigned.",
-    relatedProjects: ["arunadoc"],
-  },
-];
+  return items.map((item) => ({
+    title: item,
+    detail: "",
+    relatedProject: inferRelatedProject(item, projects),
+  }));
+}
+
+export async function getDecisions(): Promise<DecisionSummary[]> {
+  const projects = await getProjects();
+  const files = await fs.readdir(DECISIONS_DIR);
+  const decisionFiles = files.filter((file) => file.endsWith(".md")).sort().reverse();
+
+  const decisions = await Promise.all(
+    decisionFiles.map(async (file) => {
+      const filePath = path.join(DECISIONS_DIR, file);
+      const fileContents = await fs.readFile(filePath, "utf8");
+      const titleLine = fileContents.split("\n").find((line) => line.startsWith("# ")) ?? "# Untitled decision";
+      const title = titleLine.replace(/^#\s*Decision:\s*/i, "").replace(/^#\s*/, "").trim();
+      const date = cleanMarkdownSection(extractSection(fileContents, "Date"));
+      const status = cleanMarkdownSection(extractSection(fileContents, "Status"));
+      const summary = cleanMarkdownSection(extractSection(fileContents, "Decision"));
+      const relatedProjects = inferRelatedProjects(fileContents, projects);
+
+      return {
+        title,
+        date: date || "unknown",
+        status: (status || "Proposed") as DecisionSummary["status"],
+        summary,
+        relatedProjects,
+      };
+    }),
+  );
+
+  return decisions;
+}

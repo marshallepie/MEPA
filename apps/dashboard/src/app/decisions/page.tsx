@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import { DashboardShell } from "@/components/dashboard-shell";
-import { decisions } from "@/lib/dashboard-data";
+import { getDecisions } from "@/lib/dashboard-data";
 
-export default function DecisionsPage() {
+export default async function DecisionsPage() {
+  const decisions = await getDecisions();
+
   return (
     <DashboardShell>
       <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -24,17 +26,19 @@ export default function DecisionsPage() {
                 <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-200">{decision.status}</span>
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-300">{decision.summary}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {decision.relatedProjects.map((slug) => (
-                  <Link
-                    key={slug}
-                    href={`/projects/${slug}`}
-                    className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-200 transition hover:border-cyan-400/40 hover:text-white"
-                  >
-                    {slug}
-                  </Link>
-                ))}
-              </div>
+              {decision.relatedProjects.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {decision.relatedProjects.map((slug) => (
+                    <Link
+                      key={slug}
+                      href={`/projects/${slug}`}
+                      className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-200 transition hover:border-cyan-400/40 hover:text-white"
+                    >
+                      {slug}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

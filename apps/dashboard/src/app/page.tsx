@@ -2,12 +2,17 @@ import Link from "next/link";
 
 import { DashboardShell } from "@/components/dashboard-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { decisions, getProjects, priorities } from "@/lib/dashboard-data";
+import { getDecisions, getPriorities, getProjects } from "@/lib/dashboard-data";
 
 const statusOrder = ["Planning", "Beta", "Blocked", "Live", "Internal Only"] as const;
 
 export default async function Home() {
-  const projects = await getProjects();
+  const [projects, priorities, decisions] = await Promise.all([
+    getProjects(),
+    getPriorities(),
+    getDecisions(),
+  ]);
+
   const statusCounts = statusOrder.map((status) => ({
     status,
     count: projects.filter((project) => project.status === status).length,
@@ -83,10 +88,10 @@ export default async function Home() {
             </div>
             <ol className="mt-5 space-y-4">
               {priorities.slice(0, 4).map((priority, index) => (
-                <li key={priority.title} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <li key={`${priority.title}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Priority {index + 1}</p>
                   <p className="mt-2 font-medium text-slate-100">{priority.title}</p>
-                  <p className="mt-2 text-sm text-slate-300">{priority.detail}</p>
+                  {priority.detail ? <p className="mt-2 text-sm text-slate-300">{priority.detail}</p> : null}
                 </li>
               ))}
             </ol>
