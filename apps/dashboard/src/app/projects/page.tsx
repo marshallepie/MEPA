@@ -2,9 +2,11 @@ import Link from "next/link";
 
 import { DashboardShell } from "@/components/dashboard-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { projects } from "@/lib/dashboard-data";
+import { getProjects } from "@/lib/project-utils";
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+  const projects = await getProjects();
+
   return (
     <DashboardShell>
       <section className="rounded-3xl border border-white/10 bg-white/5 p-6">

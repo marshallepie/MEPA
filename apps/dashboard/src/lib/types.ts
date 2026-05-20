@@ -42,6 +42,7 @@ export interface ProjectRecord {
   revenueModel: string;
   blocker: string;
   nextAction: string;
+  notes: string;
   links: {
     repoUrl: string | null;
     liveUrl: string | null;

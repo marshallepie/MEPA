@@ -2,18 +2,21 @@ import Link from "next/link";
 
 import { DashboardShell } from "@/components/dashboard-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { decisions, priorities, projects } from "@/lib/dashboard-data";
+import { decisions, getProjects, priorities } from "@/lib/dashboard-data";
 
-const statusOrder = ["Planning", "Beta", "Blocked", "Live", "Internal Only"];
+const statusOrder = ["Planning", "Beta", "Blocked", "Live", "Internal Only"] as const;
 
-export default function Home() {
+export default async function Home() {
+  const projects = await getProjects();
   const statusCounts = statusOrder.map((status) => ({
     status,
     count: projects.filter((project) => project.status === status).length,
   }));
 
   const blockedProjects = projects.filter((project) => project.status === "Blocked");
-  const activeProjects = projects.filter((project) => ["Planning", "Beta", "Live", "Internal Only"].includes(project.status));
+  const activeProjects = projects.filter((project) =>
+    ["Planning", "Beta", "Live", "Internal Only"].includes(project.status),
+  );
 
   return (
     <DashboardShell>

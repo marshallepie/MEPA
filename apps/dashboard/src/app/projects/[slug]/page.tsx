@@ -3,23 +3,18 @@ import { notFound } from "next/navigation";
 
 import { DashboardShell } from "@/components/dashboard-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { getProjectBySlug } from "@/lib/project-utils";
+import { getProjectBySlug, getProjectSlugs } from "@/lib/project-utils";
 
-export function generateStaticParams() {
-  return [
-    { slug: "mepa" },
-    { slug: "jobbuilda" },
-    { slug: "arunadoc" },
-    { slug: "mema" },
-    { slug: "marshallepie-site" },
-  ];
+export async function generateStaticParams() {
+  const slugs = await getProjectSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export default async function ProjectDetailPage({
   params,
 }: PageProps<"/projects/[slug]">) {
   const { slug } = await params;
-  const project = getProjectBySlug(slug);
+  const project = await getProjectBySlug(slug);
 
   if (!project) {
     notFound();
@@ -59,6 +54,13 @@ export default async function ProjectDetailPage({
               <h3 className="text-lg font-semibold text-white">Next critical action</h3>
               <p className="mt-3 text-sm leading-6 text-slate-300">{project.nextAction}</p>
             </section>
+
+            {project.notes ? (
+              <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+                <h3 className="text-lg font-semibold text-white">Notes</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{project.notes}</p>
+              </section>
+            ) : null}
           </div>
 
           <div className="space-y-6">

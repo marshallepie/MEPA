@@ -1,177 +1,131 @@
-import type { DecisionSummary, PriorityItem, ProjectRecord } from "@/lib/types";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 
-export const projects: ProjectRecord[] = [
-  {
-    name: "MEPA",
-    slug: "mepa",
-    type: "ops-system",
-    status: "Planning",
-    summary:
-      "Internal portfolio operating system evolving from a documentation-first repo into a private dashboard app.",
-    purpose:
-      "Provide continuity, structure, and operational visibility across the Marshall Epie portfolio.",
-    users: ["Marshall Epie"],
+import matter from "gray-matter";
+
+import type { DecisionSummary, PriorityItem, ProjectRecord, ProjectStatus, ProjectType } from "@/lib/types";
+
+interface ProjectFrontmatter {
+  name?: string;
+  slug?: string;
+  type?: ProjectType;
+  status?: ProjectStatus;
+  summary?: string;
+  users?: string[];
+  stack?: Partial<ProjectRecord["stack"]>;
+  deployment?: Partial<ProjectRecord["deployment"]>;
+  revenue_model?: string;
+  links?: {
+    repo_url?: string | null;
+    live_url?: string | null;
+  };
+  last_updated?: string;
+}
+
+const PROJECTS_DIR = path.resolve(process.cwd(), "..", "..", "projects");
+
+function normalizeStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function normalizeString(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return "";
+}
+
+function extractSection(content: string, heading: string): string {
+  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `^## ${escapedHeading}\\n([\\s\\S]*?)(?=^## |\\Z)`,
+    "m",
+  );
+  const match = content.match(pattern);
+
+  if (!match) {
+    return "";
+  }
+
+  return match[1].trim();
+}
+
+function cleanMarkdownSection(value: string): string {
+  return value
+    .split("\n")
+    .map((line) => line.replace(/^[-*]\s*/, "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function mapProjectFileToRecord(fileContents: string): ProjectRecord {
+  const { data, content } = matter(fileContents);
+  const frontmatter = data as ProjectFrontmatter;
+
+  return {
+    name: frontmatter.name ?? "Unnamed Project",
+    slug: frontmatter.slug ?? "unknown-project",
+    type: frontmatter.type ?? "product",
+    status: frontmatter.status ?? "Planning",
+    summary: normalizeString(frontmatter.summary),
+    purpose: cleanMarkdownSection(extractSection(content, "Purpose")),
+    users: normalizeStringArray(frontmatter.users),
     stack: {
-      frontend: ["Next.js (planned)", "TypeScript (planned)", "Tailwind CSS (planned)"],
-      backend: ["Supabase (planned)"],
-      database: ["PostgreSQL via Supabase (planned)"],
-      billing: [],
-      hosting: ["GitHub repository", "future app hosting to be confirmed"],
-      integrations: ["GitHub", "project docs", "future AI orchestration"],
+      frontend: normalizeStringArray(frontmatter.stack?.frontend),
+      backend: normalizeStringArray(frontmatter.stack?.backend),
+      database: normalizeStringArray(frontmatter.stack?.database),
+      billing: normalizeStringArray(frontmatter.stack?.billing),
+      hosting: normalizeStringArray(frontmatter.stack?.hosting),
+      integrations: normalizeStringArray(frontmatter.stack?.integrations),
     },
     deployment: {
-      environment: "internal",
-      hosting: "GitHub repository",
-      domain: null,
+      environment: normalizeString(frontmatter.deployment?.environment) || "unknown",
+      hosting: normalizeString(frontmatter.deployment?.hosting) || "unknown",
+      domain: normalizeString(frontmatter.deployment?.domain) || null,
     },
-    revenueModel: "internal operational leverage",
-    blocker:
-      "Without normalized records and an app structure, MEPA could drift back into fragmented notes and prompt sprawl.",
-    nextAction:
-      "Build the first dashboard scaffold and align project records to the documented schema.",
+    revenueModel: normalizeString(frontmatter.revenue_model),
+    blocker: cleanMarkdownSection(extractSection(content, "Blocker or Risk")),
+    nextAction: cleanMarkdownSection(extractSection(content, "Next Critical Action")),
+    notes: cleanMarkdownSection(extractSection(content, "Notes")),
     links: {
-      repoUrl: "https://github.com/marshallepie/MEPA",
-      liveUrl: null,
+      repoUrl: normalizeString(frontmatter.links?.repo_url) || null,
+      liveUrl: normalizeString(frontmatter.links?.live_url) || null,
     },
-    lastUpdated: "2026-05-20",
-  },
-  {
-    name: "JobBuilda",
-    slug: "jobbuilda",
-    type: "product",
-    status: "Beta",
-    summary:
-      "Beta-stage product currently running and needing a clearer hardening path.",
-    purpose:
-      "Serve users in the hiring and job-seeking space as an active portfolio product.",
-    users: ["job seekers", "employers"],
-    stack: {
-      frontend: ["To be confirmed"],
-      backend: ["To be confirmed"],
-      database: ["Supabase"],
-      billing: ["Stripe"],
-      hosting: ["Netlify"],
-      integrations: [],
-    },
-    deployment: {
-      environment: "beta",
-      hosting: "Netlify",
-      domain: null,
-    },
-    revenueModel: "subscription or SaaS-style model to be confirmed",
-    blocker:
-      "Risk of remaining in indefinite beta without explicit hardening criteria and release gates.",
-    nextAction:
-      "Define beta exit criteria, feedback inputs, and the top launch-blocking defects.",
-    links: {
-      repoUrl: "https://github.com/marshallepie/jobbuilda",
-      liveUrl: null,
-    },
-    lastUpdated: "2026-05-20",
-  },
-  {
-    name: "ArunaDoc",
-    slug: "arunadoc",
-    type: "product",
-    status: "Blocked",
-    summary:
-      "Product initiative blocked by backend and structural issues that require a full redesign pass.",
-    purpose:
-      "Create a product with a stable backend and clear architecture before further feature delivery.",
-    users: ["To be confirmed"],
-    stack: {
-      frontend: ["To be confirmed"],
-      backend: ["To be confirmed"],
-      database: ["To be confirmed"],
-      billing: [],
-      hosting: [],
-      integrations: [],
-    },
-    deployment: {
-      environment: "blocked",
-      hosting: "To be confirmed",
-      domain: null,
-    },
-    revenueModel: "To be confirmed",
-    blocker:
-      "Continuing implementation on an unstable backend structure will compound technical debt and slow future delivery.",
-    nextAction:
-      "Produce a formal restructure plan covering backend responsibilities, domain model, storage boundaries, project layout, and deployment assumptions.",
-    links: {
-      repoUrl: "https://github.com/marshallepie/ArunaDoc",
-      liveUrl: null,
-    },
-    lastUpdated: "2026-05-20",
-  },
-  {
-    name: "MEMA",
-    slug: "mema",
-    type: "internal-tool",
-    status: "Internal Only",
-    summary:
-      "Internal system that currently runs only on localhost and has not yet been positioned for hosted use.",
-    purpose:
-      "Support internal workflows as a local-only system until a hosting decision is made.",
-    users: ["Marshall Epie", "internal only"],
-    stack: {
-      frontend: ["To be confirmed"],
-      backend: ["To be confirmed"],
-      database: ["To be confirmed"],
-      billing: [],
-      hosting: ["localhost"],
-      integrations: [],
-    },
-    deployment: {
-      environment: "local-only",
-      hosting: "localhost",
-      domain: null,
-    },
-    revenueModel: "internal operational leverage",
-    blocker:
-      "Lack of deployment strategy may limit adoption, testing, and integration opportunities.",
-    nextAction:
-      "Decide whether MEMA remains local-only, becomes a hosted internal tool, or moves toward a broader deployment path.",
-    links: {
-      repoUrl: "https://github.com/marshallepie/MEMA",
-      liveUrl: null,
-    },
-    lastUpdated: "2026-05-20",
-  },
-  {
-    name: "marshallepie.com",
-    slug: "marshallepie-site",
-    type: "website",
-    status: "Live",
-    summary:
-      "Public marketing and routing hub for Marshall Epie's products, music, and electrical services.",
-    purpose:
-      "Act as the public-facing entry point into the wider Marshall Epie portfolio.",
-    users: ["public visitors", "product leads", "service leads"],
-    stack: {
-      frontend: ["To be confirmed"],
-      backend: ["To be confirmed"],
-      database: ["Supabase"],
-      billing: ["Stripe"],
-      hosting: ["Netlify"],
-      integrations: [],
-    },
-    deployment: {
-      environment: "production",
-      hosting: "Netlify",
-      domain: "marshallepie.com",
-    },
-    revenueModel: "lead generation, portfolio routing, and brand presence",
-    blocker:
-      "Public messaging can drift away from current product priorities or active service offerings if it is not kept aligned.",
-    nextAction:
-      "Keep site navigation and messaging aligned with active products, services, and portfolio priorities.",
-    links: {
-      repoUrl: "https://github.com/marshallepie/marshallepie.com",
-      liveUrl: "https://marshallepie.com",
-    },
-    lastUpdated: "2026-05-20",
-  },
-];
+    lastUpdated: normalizeString(frontmatter.last_updated) || "unknown",
+  };
+}
+
+export async function getProjects(): Promise<ProjectRecord[]> {
+  const files = await fs.readdir(PROJECTS_DIR);
+  const projectFiles = files.filter((file) => file.endsWith(".md")).sort();
+
+  const projects = await Promise.all(
+    projectFiles.map(async (file) => {
+      const filePath = path.join(PROJECTS_DIR, file);
+      const fileContents = await fs.readFile(filePath, "utf8");
+      return mapProjectFileToRecord(fileContents);
+    }),
+  );
+
+  return projects.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getProjectBySlug(slug: string): Promise<ProjectRecord | null> {
+  const projects = await getProjects();
+  return projects.find((project) => project.slug === slug) ?? null;
+}
+
+export async function getProjectSlugs(): Promise<string[]> {
+  const projects = await getProjects();
+  return projects.map((project) => project.slug);
+}
 
 export const priorities: PriorityItem[] = [
   {
