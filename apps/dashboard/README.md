@@ -10,28 +10,67 @@ It is a private Next.js dashboard intended to sit on top of the MEPA operating r
 
 ## Current state
 
-This version is a read-only scaffold backed by typed seed data derived from the MEPA documentation structure.
+This version is a read-only dashboard backed by real repo markdown records:
+- `projects/*.md`
+- `tasks/now.md`
+- `decisions/*.md`
 
-## Run locally
+## Local runtime standard
+
+The dashboard is pinned to:
+- Node `20.19.2`
+- npm `9.x`
+
+If you use `nvm`:
 
 ```bash
 cd apps/dashboard
-npm install
+nvm use
+```
+
+## Run locally
+
+For normal repo sync and local development, use `npm ci` instead of `npm install`.
+
+```bash
+cd apps/dashboard
+nvm use  # if available
+npm ci
 npm run dev
 ```
 
 Open `http://localhost:3000`.
 
+## Sync after pulling from origin
+
+Use this when the repo changes and you want your local dependencies to match the committed lockfile exactly:
+
+```bash
+git pull
+cd apps/dashboard
+nvm use  # if available
+npm ci
+npm run dev
+```
+
+## Recover from local dependency drift
+
+If local dependencies or generated files get out of sync:
+
+```bash
+cd apps/dashboard
+rm -rf node_modules .next
+git restore package.json package-lock.json
+nvm use  # if available
+npm ci
+```
+
 ## Quality checks
 
 ```bash
 cd apps/dashboard
+nvm use  # if available
+npm ci
 npm run lint
 npm run build
 ```
-
-## Near-term direction
-
-- replace seed data with parsed project records or a structured data source
-- connect priorities and decisions to repo-backed content
-- add controlled editing once the schema is stable
